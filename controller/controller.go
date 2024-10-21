@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"path/filepath"
 )
 
 /*
@@ -57,6 +58,10 @@ func Download(context *gin.Context) {
 
 func IndexHandlerv4(context *gin.Context) {
 	context.HTML(http.StatusOK, "verify.html", nil)
+}
+
+func IndexHandlerv5(context *gin.Context) {
+	context.HTML(http.StatusOK, "utility.html", nil)
 }
 
 func UploadFile(context *gin.Context) {
@@ -199,7 +204,7 @@ func DeleteAFile(context *gin.Context) {
 	}
 }
 
-// UploadFileLocal 将上传的文件保存到本地
+// UploadFileLocal 将上传的文件保存到本地用于校验
 func UploadFileLocal(context *gin.Context) {
 	if Filetype, err := models.SaveFilelocal(context); err != nil {
 		context.JSON(http.StatusOK, gin.H{"error": err.Error()})
@@ -226,17 +231,14 @@ func GetFingerPrint(context *gin.Context) {
 			"filetype": filetype,
 		})
 	} else {
-		TxHash, fingerprint, err := models.ExtractFingerPrint(filepath) //todo: 后续加上提取水印算法之后加上
-		//TxHash := "0x91aaaee91c567cea1c5aa303f79bc41acfd545d0415a390c925ccf61a5e72f55"
-		//fingerprint := "00110001111100111100111101111000011110011110101011100010101000010000111001111111000000111111111111001011010001001110110011111000"
-		fmt.Println(filepath)
-		//fingerprint = filepath
+		TxHash, fingerprint, fileId, err := models.ExtractFingerPrint(filepath)
+		fmt.Println(filepath, fingerprint, fileId)
 		if err != nil {
 			context.JSON(http.StatusOK, gin.H{"error": err.Error()})
-		} //todo: 后续完善了哈希功能之后加上
+		}
 		context.JSON(http.StatusOK, gin.H{
 			"fingerprint": fingerprint,
-			"filetxHash":  TxHash, //todo: 后续需要将这里加上
+			"filetxHash":  TxHash,
 		})
 	}
 }
@@ -266,5 +268,115 @@ func TraceBackOnChain(context *gin.Context) {
 			"filedata":      filedata,
 			"applydatalist": applydatalist,
 		})
+	}
+}
+
+// UploadFileLocal 将上传的文件保存到本地用于效用分析
+func UploadFileLocal2(context *gin.Context) {
+	if _, err := models.SaveFilelocal2(context); err != nil {
+		context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+	} else {
+		context.JSON(http.StatusOK, gin.H{
+			"status": "Upload success",
+		})
+	}
+}
+
+// Utility 进行效用分析
+func Utility(context *gin.Context) {
+	dirPth := fmt.Sprintf("./analysisfile/analysisfile.csv")
+	_, _, fileid, err := models.ExtractFingerPrint(dirPth)
+	//if err != nil {
+	//	context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+	//}
+
+	// 验证文件是否含有水印, 如果有水印则是扰动数据, 如果没有水印就是原始数据
+	if fileid != "" {
+		if err = models.Utility(context, fileid); err != nil {
+			context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			context.JSON(http.StatusOK, gin.H{"file": "success utility"})
+		}
+	} else {
+		if Accuracy, W_Precision, W_Recall, W_F1, Node, err := models.DOUtility2(context); err != nil {
+			context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			context.JSON(http.StatusOK, gin.H{
+				"Accuracy":    Accuracy,
+				"W_Precision": W_Precision,
+				"W_Recall":    W_Recall,
+				"W_F1":        W_F1,
+				"Node":        Node,
+			})
+		}
+	}
+}
+
+// 对扰动文件和原始文件进行模型训练和精度对比
+func DOUtility(context *gin.Context) {
+	filename, _ := context.Params.Get("filename")
+	if accuracy, w_precision, w_recall, w_f1, node, err := models.DOUtility(context, filename); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	} else {
+		context.JSON(http.StatusOK, gin.H{
+			"Accuracy":    accuracy,
+			"W_Precision": w_precision,
+			"W_Recall":    w_recall,
+			"W_F1":        w_f1,
+			"Node":        node,
+		})
+	}
+}
+
+func GetFile(context *gin.Context) {
+	// 从表单中获取文件
+	file, err := context.FormFile("perturbed_file")
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "无法获取文件"})
+		return
+	}
+
+	// 获取原始文件名和文件后缀
+	originalFileName := file.Filename
+	fileExtension := filepath.Ext(originalFileName)
+
+	// 构建新的文件名
+	newFileName := "analysisfile_FP" + fileExtension
+
+	// 设置保存路径
+	dst := fmt.Sprintf("./analysisfile/%s", newFileName)
+
+	// 保存文件
+	if err := context.SaveUploadedFile(file, dst); err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "文件写入失败"})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"message": "文件已成功上传", "filename": newFileName})
+}
+
+func DownloadModelFile(context *gin.Context) {
+	modelname, _ := context.Params.Get("ModelName")
+	node, _ := context.Params.Get("Node")
+	if node == "Self" {
+		if err := models.DownloadModel(context, modelname, ""); err != nil {
+			context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		}
+	} else {
+		if err := models.DownloadModelFile(context, node, modelname); err != nil {
+			context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+	}
+
+	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+}
+
+func DownloadModel(context *gin.Context) {
+	modelname, _ := context.Params.Get("ModelName")
+	Type, _ := context.Params.Get("Type")
+	if err := models.DownloadModel(context, modelname, Type); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	} else {
+		context.JSON(http.StatusOK, gin.H{"file": "success download"})
 	}
 }

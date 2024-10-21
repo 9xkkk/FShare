@@ -10,8 +10,9 @@ func SetupRouter() *gin.Engine {
 
 	r := gin.Default()
 	r.Use(middlewares.Cors())
-	r.Static("/static", "static")
-	r.LoadHTMLGlob("templates/*")
+	r.Static("/dist", "./dist")
+	//r.Static("/static", "static")
+	//r.LoadHTMLGlob("templates/*")
 	r.GET("/myfile", controller.IndexHandler)
 	r.GET("/download/:fileName", controller.Download)
 
@@ -30,6 +31,8 @@ func SetupRouter() *gin.Engine {
 		//删除
 		v1Group.DELETE("/deleteapply/:id/:applyOwner", controller.DeleteApply)
 		v1Group.DELETE("/deletefile/:id", controller.DeleteAFile)
+		//添加
+		v1Group.POST("/addfile/")
 	}
 
 	//页面二路由
@@ -57,5 +60,25 @@ func SetupRouter() *gin.Engine {
 		//查询所上传文件在区块链上所保存的信息
 		v4Group.GET("/traceback/:txHash/:sourceNode", controller.TraceBackOnChain)
 	}
+
+	//页面五路由
+	v5Group := r.Group("utility")
+	{
+		//返回页面的HTML静态页面
+		v5Group.GET("/index", controller.IndexHandlerv5)
+		//上传需要进行效用分析的文件
+		v5Group.POST("/upload3", controller.UploadFileLocal2)
+		//对上传的文件进行模型训练和效用分析
+		v5Group.GET("/train_analysis", controller.Utility)
+		//接受扰动文件并进行模型训练和效用分析
+		v5Group.POST("/getfile", controller.GetFile)
+		//对扰动文件和原始文件进行模型训练和效用分析
+		v5Group.GET("/do_TA/:filename", controller.DOUtility)
+		//进行模型下载
+		v5Group.GET("/download/:ModelName/:Node", controller.DownloadModelFile)
+		//实际的模型下载
+		v5Group.GET("download2/:ModelName/:Type", controller.DownloadModel)
+	}
+
 	return r
 }
