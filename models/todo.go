@@ -2,14 +2,16 @@ package models
 
 import (
 	"FShare/dao"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"net"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"os/exec"
@@ -44,7 +46,7 @@ type Apply struct {
 
 type Applyrecord struct {
 	FileID      string `json:"id"`
-	Hash        string `json:"txHash" gorm:"primary_key" `
+	Hash        string `json:"txHash" gorm:"primary_key"`
 	FingerPrint string `json:"fingerprint"`
 	Status      string `json:"status"`
 }
@@ -85,7 +87,7 @@ var IP = gin.H{
 	"C": "124.221.254.11", //金严
 	"D": "124.223.210.53", //叶克炉
 	"E": "124.222.196.78", //唐聪
-	"F": "10.96.92.7",     //kxq
+	"F": "10.96.228.235",  //kxq
 	"G": "10.96.208.18",   //wyc
 	"Y": "10.0.4.14",      //云服务器
 }
@@ -96,7 +98,7 @@ var Ip2Node = gin.H{
 	"124.221.254.11": "C",
 	"124.223.210.53": "D", //叶克炉
 	"124.222.196.78": "E", //唐聪
-	"10.96.92.7":     "F", //kxq
+	"10.96.228.235":  "F", //kxq
 	"10.96.208.18":   "G", //wyc
 	"10.0.4.14":      "Y", //云服务器
 }
@@ -108,13 +110,17 @@ Todo这个model的增删改查放在这里
 */
 
 func GetHostIp() string {
-	conn, err := net.Dial("udp", "8.8.8.8:53")
-	if err != nil {
-		fmt.Println("get current host ip err: ", err)
-		return ""
-	}
-	addr := conn.LocalAddr().(*net.UDPAddr)
-	ip := strings.Split(addr.String(), ":")[0]
+	//conn, err := net.Dial("udp", "8.8.8.8:53")
+	//if err != nil {
+	//	fmt.Println("get current host ip err: ", err)
+	//	return ""
+	//}
+	//addr := conn.LocalAddr().(*net.UDPAddr)
+	//ip := strings.Split(addr.String(), ":")[0]
+	//return ip
+	cmd := exec.Command("curl", "myexternalip.com/raw") // 创建一个命令对象，用于获取公网 IP
+	output, _ := cmd.Output()
+	ip := string(output)
 	return ip
 }
 
@@ -277,7 +283,9 @@ func UpdateFile(file *File) (err error) {
 }
 
 func EmbedFingerprint(applyHash, fileName string) (string, error) {
-	cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
+	//cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/embed.py", fileName, applyHash)
+	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -288,6 +296,7 @@ func EmbedFingerprint(applyHash, fileName string) (string, error) {
 		return "", errors.New("embed error")
 	}
 
+	print(result)
 	return result, nil
 }
 
@@ -413,9 +422,11 @@ func GetVerifyFile(filetype string) (FilePath string, err error) {
 	return FilePath, nil
 }
 
-func ExtractFingerPrint(filePath string) (string, string, error) {
+func ExtractFingerPrint(filePath string) (string, string, string, error) {
 	fmt.Println(filePath)
-	cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/extract.py", filePath)
+	//cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/extract.py", filePath)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/extract.py", filePath)
+	//cmd := exec.Command("/usr/bin/python", "python/extract.py", filePath)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -423,14 +434,17 @@ func ExtractFingerPrint(filePath string) (string, string, error) {
 	}
 	result := string(output)
 	if result == "false" {
-		return "", "", errors.New("embed error")
+		return "", "", "", errors.New("embed error")
 	}
-	fmt.Println(result)
+	result = strings.Replace(result, "\n", "", -1)
+	result = result + "\n"
+	fmt.Print(result)
 	applyrecord := new(Applyrecord)
-	if err = dao.DB.Where("finger_print=?", result).Find(applyrecord).Error; err != nil {
-		return applyrecord.Hash, result, err
+	if err = dao.DB.Where("finger_print = ?", result).First(&applyrecord).Error; err != nil {
+		println("DB error:", err.Error())
+		return applyrecord.Hash, result, applyrecord.FileID, err
 	}
-	return applyrecord.Hash, result, nil
+	return applyrecord.Hash, result, applyrecord.FileID, nil
 }
 
 // 获取上传的核验文件的哈希值
@@ -555,4 +569,264 @@ func TraceBackOnChain(txHash string, sourceNode string) ([]Hashdata, Hashdata, [
 		checkdata = append(checkdata, data)
 	}
 	return applydatalist_verified, filedata, checkdata, err
+}
+
+// 将效用分析文件保存到效用分析缓存区
+func SaveFilelocal2(context *gin.Context) (Filetype string, err error) {
+	// 将上传的文件取出来
+	f, err := context.FormFile("FileAnalysis")
+	if err != nil {
+		context.JSON(http.StatusOK, gin.H{"message": err.Error()})
+		return "", err
+	}
+
+	// 获取原始文件名和文件后缀
+	originalFileName := f.Filename
+	fileExtension := filepath.Ext(originalFileName)
+
+	// 构建新的文件名
+	newFileName := "analysisfile" + fileExtension
+
+	// 设置文件名称为新的文件名
+	f.Filename = newFileName
+
+	// 将上传的文件保存到指定的本地地址，并返回响应
+	log.Println(f.Filename)
+	dst := fmt.Sprintf("./analysisfile/%s", f.Filename) // 设置效用分析文件保存的本地地址路径
+	if err = context.SaveUploadedFile(f, dst); err != nil {
+		return "", err
+	}
+	return fileExtension, nil
+}
+
+func Utility(context *gin.Context, fileid string) error {
+	node := string(fileid[0]) // 取出文件所在节点信息
+
+	// 取出文件名并构建对应服务器的路由
+	file := new(File)
+	if err_1 := dao.DB.Where("file_id=?", fileid).First(file).Error; err_1 != nil {
+		println(err_1.Error())
+		return err_1
+	}
+	str := fmt.Sprintf("%v", IP[node])
+	address_1 := "http://" + str + ":8080/utility/do_TA/" + file.Name
+	address_2 := "http://" + str + ":8080/utility/getfile"
+
+	// 将扰动文件发送给对应的原始文件拥有者的服务器
+	if err_2 := sendFileToServerX(address_2); err_2 != nil {
+		return err_2
+	}
+	context.Redirect(http.StatusMovedPermanently, address_1)
+	return nil
+}
+
+// 将扰动文件发送到原始文件拥有者的函数
+func sendFileToServerX(serverBUrl string) error {
+
+	fileLocation := "./analysisfile/analysisfile.csv"
+	// 打开文件
+	file, err := os.Open(fileLocation)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer file.Close()
+
+	// 创建 multipart writer
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("perturbed_file", file.Name())
+	if err != nil {
+		return fmt.Errorf("创建表单文件失败: %w", err)
+	}
+
+	// 将文件内容复制到 part
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return fmt.Errorf("复制文件内容失败: %w", err)
+	}
+
+	// 关闭 multipart writer
+	err = writer.Close()
+	if err != nil {
+		return fmt.Errorf("关闭 multipart writer 失败: %w", err)
+	}
+
+	// 创建 HTTP 客户端和请求
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", serverBUrl, body)
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("发送请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查响应状态
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("接收方返回错误状态码: %s", resp.Status)
+	}
+
+	fmt.Println("文件发送成功")
+	return nil
+}
+
+func DOUtility(context *gin.Context, fileName string) ([][]float64, [][]float64, [][]float64, [][]float64, string, error) {
+	// 构建文件路径
+	var fN = strings.Split(fileName, ".")
+
+	dst_original := fmt.Sprintf("./csvfile/%s.csv", fN[0]) // 原始文件的文件路径
+	dst_perturbed := fmt.Sprintf("./analysisfile/analysisfile_FP.csv")
+
+	// 打开原始文件进行检查
+	Original_file, err := os.Open(dst_original)
+	if err != nil {
+		// 处理错误
+		context.JSON(http.StatusNotFound, gin.H{"error": "Original File not found, may be delete"})
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, Node, err
+	}
+	Original_file.Close()
+
+	// 打开扰动文件进行检查
+	Perturbed_file, err := os.Open(dst_perturbed)
+	if err != nil {
+		// 处理错误
+		context.JSON(http.StatusNotFound, gin.H{"error": "Perturbed File not found, may be delete"})
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, Node, err
+	}
+	Perturbed_file.Close()
+
+	var Accuracy, W_Precision, W_Recall, W_F1 [][]float64
+
+	// 使用 exec.Command 执行 Python 脚本
+	//cmd := exec.Command("D:\\Reaserch\\Go_WorkSpace\\go_tour\\venv\\Scripts\\python.exe", "python/Model_Train.py", dst_original, dst_perturbed)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
+	//cmd := exec.Command("/usr/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
+
+	// 创建缓冲区来捕获输出和错误
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// 运行命令
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Error executing Python script:", err)
+		fmt.Println("Error Output:", stderr.String())
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, Node, err
+	}
+
+	// 获取 Python 输出
+	result := strings.TrimSpace(stdout.String()) // 获取并去除多余的空白字符
+	fmt.Println("Python Output:", result)
+
+	// 将 JSON 字符串解析为三维数组
+	var results [][][]float64
+	err = json.Unmarshal([]byte(result), &results)
+	if err != nil {
+		fmt.Println("Error parsing output to [][][]float64:", err)
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, Node, err
+	}
+
+	// 将解析的结果分别赋值到对应的二维数组中
+	if len(results) == 4 {
+		Accuracy = results[0]
+		W_Precision = results[1]
+		W_Recall = results[2]
+		W_F1 = results[3]
+	}
+	return Accuracy, W_Precision, W_Recall, W_F1, Node, nil
+}
+
+func DOUtility2(context *gin.Context) ([][]float64, [][]float64, [][]float64, [][]float64, string, error) {
+	dst := fmt.Sprintf("./analysisfile/analysisfile.csv")
+
+	file, err := os.Open(dst)
+	if err != nil {
+		// 处理错误
+		context.JSON(http.StatusNotFound, gin.H{"error": "Original File not found, may be delete"})
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, "", err
+	}
+	file.Close()
+
+	var Accuracy, W_Precision, W_Recall, W_F1 [][]float64
+
+	// 使用 exec.Command 执行 Python 脚本
+	//cmd := exec.Command("D:\\Reaserch\\Go_WorkSpace\\go_tour\\venv\\Scripts\\python.exe", "python/Model_Train2.py", dst)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/Model_Train2.py", dst)
+	//cmd := exec.Command("/usr/bin/python", "python/Model_Train2.py", dst)
+
+	// 创建缓冲区来捕获输出和错误
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// 运行命令
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Error executing Python script:", err)
+		fmt.Println("Error Output:", stderr.String())
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, "", err
+	}
+
+	// 获取 Python 输出
+	result := strings.TrimSpace(stdout.String()) // 获取并去除多余的空白字符
+	fmt.Println("Python Output:", result)
+
+	// 将 JSON 字符串解析为三维数组
+	var results [][][]float64
+	err = json.Unmarshal([]byte(result), &results)
+	if err != nil {
+		fmt.Println("Error parsing output to [][][]float64:", err)
+		return [][]float64{}, [][]float64{}, [][]float64{}, [][]float64{}, "", err
+	}
+
+	// 将解析的结果分别赋值到对应的二维数组中
+	if len(results) == 4 {
+		Accuracy = results[0]
+		W_Precision = results[1]
+		W_Recall = results[2]
+		W_F1 = results[3]
+	}
+	return Accuracy, W_Precision, W_Recall, W_F1, "Self", nil
+}
+
+func DownloadModelFile(context *gin.Context, node, modelname string) (err error) {
+
+	str := fmt.Sprintf("%v", IP[node])
+	address := "http://" + str + ":8080/utility/download2/" + modelname + "/perturbed"
+	context.Redirect(http.StatusMovedPermanently, address)
+	return
+
+}
+
+func DownloadModel(context *gin.Context, ModelName, Type string) (err error) {
+	var dst string
+	if Type == "" {
+		dst = fmt.Sprintf("./Train_Models/original_models/%s.pkl", ModelName) // 修改为正确的文件路径
+	} else {
+		dst = fmt.Sprintf("./Train_Models/perturbed_models/Perturbed_%s.pkl", ModelName)
+	}
+
+	// 打开文件
+	file, err := os.Open(dst)
+	if err != nil {
+		// 处理错误
+		context.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return err
+	}
+	defer file.Close()
+
+	// 设置响应头
+	fileName := ModelName
+	if Type != "" {
+		fileName = "Perturbed_" + ModelName
+	}
+	context.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.pkl", fileName))
+	context.Header("Content-Type", "application/octet-stream")
+	context.File(dst)
+
+	return nil
 }
