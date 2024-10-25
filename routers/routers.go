@@ -23,16 +23,16 @@ func SetupRouter() *gin.Engine {
 		//下载
 		v1Group.GET("/download/:fileName/:destNode", controller.DownloadFile)
 		//查看一个文件信息
-		v1Group.GET("/onefile/:id", controller.GetFileByID)
+		v1Group.GET("/onefile/:id/:file_owner", controller.GetFileByID)
 		//按钮触发更改状态
-		v1Group.PUT("/applied/:id", controller.UpdateStatus)
+		v1Group.PUT("/applied/:id/:file_owner", controller.UpdateStatus)
 		//更改申请状态
-		v1Group.PUT("/update/:id/:applyOwner", controller.UpdateApplyStatus)
+		v1Group.PUT("/update/:id/:applyOwner/:file_owner", controller.UpdateApplyStatus)
 		//删除
-		v1Group.DELETE("/deleteapply/:id/:applyOwner", controller.DeleteApply)
-		v1Group.DELETE("/deletefile/:id", controller.DeleteAFile)
+		v1Group.DELETE("/deleteapply/:id/:applyOwner/:file_owner", controller.DeleteApply)
+		v1Group.DELETE("/deletefile/:id/:file_owner", controller.DeleteAFile)
 		//添加
-		v1Group.POST("/addfile/")
+		v1Group.POST("/addfile", controller.AddFile)
 	}
 
 	//页面二路由
