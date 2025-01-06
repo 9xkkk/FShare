@@ -45,14 +45,16 @@ type File struct {
 }
 
 type Apply struct {
-	ApplyOwner string `json:"applyOwner" gorm:"primary_key"`
-	FileOwner  string `json:"fileOwner" gorm:"primary_key"`
-	Time       string `json:"time"`
-	FileID     string `json:"id" gorm:"primary_key"`
-	FileName   string `json:"fileName"`
-	Hash       string `json:"txHash"`
-	Status     int    `json:"status"`
-	IsHandled  bool   `json:"isHandled"`
+	ApplyOwner    string `json:"applyOwner" gorm:"primary_key"`
+	FileOwner     string `json:"fileOwner" gorm:"primary_key"`
+	Time          string `json:"time"`
+	FileID        string `json:"id" gorm:"primary_key"`
+	FileName      string `json:"fileName"`
+	Hash          string `json:"txHash"`
+	Status        int    `json:"status"`
+	FingerPrint   string `json:"fingerPrint"`
+	PrivacyBudget string `json:"privacyBudget"`
+	IsHandled     bool   `json:"isHandled"`
 }
 
 type Applyrecord struct {
@@ -135,9 +137,9 @@ func GetHostIp() string {
 	return ip
 }
 
-func DownloadFile(context *gin.Context, node, fileName string) (err error) {
+func DownloadFile(context *gin.Context, node, fileName, applyOwner string) (err error) {
 	str := fmt.Sprintf("%v", IP[node])
-	address := "http://" + str + ":8080/download/" + fileName
+	address := "http://" + str + ":8080/download/" + fileName + "/" + applyOwner
 	//fmt.Println(str)
 	context.Redirect(http.StatusMovedPermanently, address)
 	return
@@ -153,11 +155,11 @@ func DownloadFile(context *gin.Context, node, fileName string) (err error) {
 //	return
 //}
 
-func Download(context *gin.Context, fileName string) (err error) {
+func Download(context *gin.Context, fileName, applyOwner string) (err error) {
 	// 构建文件路径
 	var fN = strings.Split(fileName, ".")
 
-	dst := fmt.Sprintf("./csvfile/%s_FP.csv", fN[0]) // 修改为正确的文件路径
+	dst := fmt.Sprintf("./csvfile/%s_%s_FP.csv", fN[0], applyOwner) // 修改为正确的文件路径
 
 	// 打开文件
 	file, err := os.Open(dst)
@@ -180,6 +182,52 @@ func Download(context *gin.Context, fileName string) (err error) {
 	//	return err
 	//}
 
+	return nil
+}
+
+// 下载生成权限标识后的文件
+func DownloadTransformedFile(context *gin.Context, fileName string) (err error) {
+	// 构建文件路径
+	var fN = strings.Split(fileName, ".")
+
+	dst := fmt.Sprintf("./csvfile/%s_FP.csv", fN[0]) // 修改为正确的文件路径
+
+	// 打开文件
+	file, err := os.Open(dst)
+	if err != nil {
+		// 处理错误
+		context.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return err
+	}
+	defer file.Close()
+
+	// 设置响应头
+	context.Header("Content-Disposition", "attachment; filename="+fN[0]+"_FP.csv")
+	context.Header("Content-Type", "application/octet-stream")
+	context.File(dst)
+	return nil
+}
+
+// 下载本地文件
+func DownloadLocalFile(context *gin.Context, fileName string) (err error) {
+	// 构建文件路径
+	var fN = strings.Split(fileName, ".")
+
+	dst := fmt.Sprintf("./csvfile/%s.csv", fN[0]) // 修改为正确的文件路径
+
+	// 打开文件
+	file, err := os.Open(dst)
+	if err != nil {
+		// 处理错误
+		context.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return err
+	}
+	defer file.Close()
+
+	// 设置响应头
+	context.Header("Content-Disposition", "attachment; filename="+fN[0]+"_FP.csv")
+	context.Header("Content-Type", "application/octet-stream")
+	context.File(dst)
 	return nil
 }
 
@@ -231,6 +279,7 @@ func CreateApply(file *File) (err error) {
 	apply.FileID = file.FileID
 	apply.FileName = file.Name
 	apply.Status = 2
+	apply.FingerPrint = ""
 	apply.IsHandled = false
 	t := time.Now()
 	apply.Time = t.Format("2006-01-02 15:04:05")
@@ -293,10 +342,10 @@ func UpdateFile(file *File) (err error) {
 
 }
 
-func EmbedFingerprint(applyHash, fileName string) (string, error) {
-	//cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/embed.py", fileName, applyHash)
-	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash)
+func EmbedFingerprint(applyOwner, applyHash, epsilon, fileName string) (string, error) {
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/embed.py", fileName, applyHash, epsilon, applyOwner)
+	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash, fingerprint, epsilon)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -311,20 +360,39 @@ func EmbedFingerprint(applyHash, fileName string) (string, error) {
 	return result, nil
 }
 
+func GenerateFingerprint(applyHash string) (string, error) {
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/generate.py", applyHash)
+	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash)
+
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(err)
+	}
+	result := string(output)
+	if result == "false" {
+		return "", errors.New("generate error")
+	}
+
+	print(result)
+	return result, nil
+}
+
 func UpdateApply(apply *Apply, applyrecord *Applyrecord) (err error) {
 
 	t := time.Now()
 	apply.Time = t.Format("2006-01-02 15:04:05")
 	applyproperties := apply.ApplyOwner + "#" + apply.FileOwner + "#" + apply.Time + "#" + apply.FileID + "#" + strconv.Itoa(apply.Status)
 	apply.Hash = transfer("apply", applyproperties)
-	apply.IsHandled = true
-	err = dao.DB.Save(apply).Error
+	//apply.IsHandled = true
+
+	//todo:根据status=4的时候，可用不可转发
+	FP, err := GenerateFingerprint(apply.Hash)
 	if err != nil {
 		return err
 	}
-
-	//todo:根据status=4的时候，可用不可转发
-	FP, err := EmbedFingerprint(apply.Hash, apply.FileName)
+	apply.FingerPrint = FP
+	err = dao.DB.Save(apply).Error
 	if err != nil {
 		return err
 	}
@@ -333,6 +401,22 @@ func UpdateApply(apply *Apply, applyrecord *Applyrecord) (err error) {
 	applyrecord.Hash = apply.Hash
 	applyrecord.Status = strconv.Itoa(apply.Status)
 	err = dao.DB.Save(applyrecord).Error
+	if err != nil {
+		return err
+	}
+	return
+
+}
+
+func UpdataPrivacyBudget(apply *Apply, epsilon string) (err error) {
+
+	apply.IsHandled = true
+	apply.PrivacyBudget = epsilon
+	_, err = EmbedFingerprint(apply.ApplyOwner, apply.Hash, apply.PrivacyBudget, apply.FileName)
+	if err != nil {
+		return err
+	}
+	err = dao.DB.Save(apply).Error
 	if err != nil {
 		return err
 	}
@@ -362,12 +446,15 @@ func DeleteAFileByID(id, fileOwner string) (err error) {
 	}
 	//删除嵌入了水印的文件
 	fileFP := strings.Split(file.Name, ".")
-	fileFP_Name := fileFP[0] + "_FP.csv"
-	if FileIsExisted(fileFP_Name) == true {
-		fmt.Println("delete success")
-		err = os.Remove("csvfile/" + fileFP_Name)
-		if err != nil {
-			return err
+	Node_delete := [...]string{"A", "B", "C", "D", "E"}
+	for _, node := range Node_delete {
+		fileFP_Name := fileFP[0] + "_" + node + "_FP.csv"
+		if FileIsExisted(fileFP_Name) == true {
+			fmt.Println("delete success")
+			err = os.Remove("csvfile/" + fileFP_Name)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -433,10 +520,10 @@ func GetVerifyFile(filetype string) (FilePath string, err error) {
 	return FilePath, nil
 }
 
-func ExtractFingerPrint(filePath string) (string, string, string, error) {
+func ExtractFingerPrint(filePath, epsilon string) (string, string, string, error) {
 	fmt.Println(filePath)
 	//cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/extract.py", filePath)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/extract.py", filePath)
+	cmd := exec.Command("/root/Y/venv/bin/python", "python/extract.py", filePath, epsilon)
 	//cmd := exec.Command("/usr/bin/python", "python/extract.py", filePath)
 
 	output, err := cmd.Output()
@@ -711,7 +798,7 @@ func DOUtility(context *gin.Context, fileName string) ([][]float64, [][]float64,
 	var Accuracy, W_Precision, W_Recall, W_F1 [][]float64
 
 	// 使用 exec.Command 执行 Python 脚本
-	//cmd := exec.Command("D:\\Reaserch\\Go_WorkSpace\\go_tour\\venv\\Scripts\\python.exe", "python/Model_Train.py", dst_original, dst_perturbed)
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/Model_Train.py", dst_original, dst_perturbed)
 	cmd := exec.Command("/root/Y/venv/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
 	//cmd := exec.Command("/usr/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
 
@@ -763,7 +850,7 @@ func DOUtility2(context *gin.Context) ([][]float64, [][]float64, [][]float64, []
 	var Accuracy, W_Precision, W_Recall, W_F1 [][]float64
 
 	// 使用 exec.Command 执行 Python 脚本
-	//cmd := exec.Command("D:\\Reaserch\\Go_WorkSpace\\go_tour\\venv\\Scripts\\python.exe", "python/Model_Train2.py", dst)
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/Model_Train2.py", dst)
 	cmd := exec.Command("/root/Y/venv/bin/python", "python/Model_Train2.py", dst)
 	//cmd := exec.Command("/usr/bin/python", "python/Model_Train2.py", dst)
 

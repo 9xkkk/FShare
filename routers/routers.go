@@ -14,7 +14,7 @@ func SetupRouter() *gin.Engine {
 	//r.Static("/static", "static")
 	//r.LoadHTMLGlob("templates/*")
 	r.GET("/myfile", controller.IndexHandler)
-	r.GET("/download/:fileName", controller.Download)
+	r.GET("/download/:fileName/:applyOwner", controller.Download)
 
 	//页面一路由
 	v1Group := r.Group("myfile")
@@ -22,12 +22,19 @@ func SetupRouter() *gin.Engine {
 
 		//下载
 		v1Group.GET("/download/:fileName/:destNode", controller.DownloadFile)
+		//下载本地文件
+		v1Group.GET("/downloadlocal/:fileName", controller.DownloadLocal)
+
+		//变换文件下载
+		v1Group.GET("/download/transformed/:fileName/:destNode/:applyOwner", controller.DownloadTransformedFile)
 		//查看一个文件信息
 		v1Group.GET("/onefile/:id/:file_owner", controller.GetFileByID)
 		//按钮触发更改状态
 		v1Group.PUT("/applied/:id/:file_owner", controller.UpdateStatus)
 		//更改申请状态
-		v1Group.PUT("/update/:id/:applyOwner/:file_owner", controller.UpdateApplyStatus)
+		v1Group.PUT("/update/:id/:applyOwner/:file_owner/:status", controller.UpdateApplyStatus)
+		//选择隐私预算
+		v1Group.PUT("/privacy/:id/:applyOwner/:file_owner/:epsilon", controller.UpdataPrivacyBudget)
 		//删除
 		v1Group.DELETE("/deleteapply/:id/:applyOwner/:file_owner", controller.DeleteApply)
 		v1Group.DELETE("/deletefile/:id/:file_owner", controller.DeleteAFile)

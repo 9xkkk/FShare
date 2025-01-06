@@ -15,10 +15,11 @@ import sys
 from scipy.special import roots_legendre
 
 
-def extract(filename):
+def extract(filename, epsilon_avg):
     # 参数已写定,与嵌入需保持一致
     sensitivity = 1
     secretKey = "nurseryDatabase"
+    # epsilon = float(epsilon_avg)
     epsilon = 3
     omega = 2  # omega取2有错
 
@@ -72,7 +73,7 @@ def extract(filename):
 
 
 if __name__ == '__main__':
-    FP = extract(sys.argv[1])
+    FP = extract(sys.argv[1], sys.argv[2])
     if FP == '':
         print("false")
     else:

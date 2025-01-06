@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
 import sys
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from sklearn.ensemble import RandomForestClassifier
@@ -9,11 +9,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.neural_network import MLPClassifier
 import joblib
 
 def train_analysis(Original_path):
-    # 定义分类器列表
+    # 定义分类器列表（去掉神经网络）
     names = [
         "Random Forest",
         "Logistic Regression",
@@ -21,7 +20,6 @@ def train_analysis(Original_path):
         "RBF SVM",
         "K-Nearest Neighbors",
         "Decision Tree",
-        "Neural Network",
     ]
 
     classifiers = [
@@ -31,7 +29,6 @@ def train_analysis(Original_path):
         SVC(gamma=2, C=1, random_state=42),
         KNeighborsClassifier(3),
         DecisionTreeClassifier(max_depth=5, random_state=42),
-        MLPClassifier(alpha=1, max_iter=1000, random_state=42),
     ]
 
     # 保存精确度的数组

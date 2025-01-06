@@ -11,10 +11,11 @@ import sys
 from scipy.special import roots_legendre
 
 
-def embed(filename, sp_id):
+def embed(filename, sp_id, epsilon_avg, applyowner):
     # 参数已写定
     sensitivity = 1
     secretKey = "nurseryDatabase"
+    # epsilon = float(epsilon_avg)
     epsilon = 3
     omega = 2  # omega取2有错
 
@@ -25,7 +26,7 @@ def embed(filename, sp_id):
     fp = bin(int(fp, 16))[2:].zfill(128)  # 转二进制，舍弃0b前缀，补充前导0至128位
 
     # 读取文件
-    R_DF = pandas.read_csv("./csvfile/"+filename, encoding='utf-8-sig')
+    R_DF = pandas.read_csv("./csvfile/" + filename, encoding='utf-8-sig')
     R = numpy.array(R_DF)
     # R = R[0:, 0:9]  # 删除了最后一列class属性
 
@@ -67,14 +68,14 @@ def embed(filename, sp_id):
 
     # 保存嵌入指纹的数据库
     # 该算法只能处理整数，fmt='%d'代表将所有数据强转为整数形式输出到新表，如果去掉用户则应手动将excel里的数据转换为整数再提取指纹，否则报错
-    output_filename = "./csvfile/"+os.path.splitext(filename)[0] + "_FP.csv"
+    output_filename = "./csvfile/" + os.path.splitext(filename)[0] + "_" + applyowner + "_FP.csv"
     numpy.savetxt(output_filename, R, delimiter=',', header=','.join(R_DF.columns), fmt='%d', comments='')
 
     return fp
 
 
 if __name__ == '__main__':
-    fp = embed(sys.argv[1], sys.argv[2])
+    fp = embed(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
     if fp == "":
         print("false")
     else:
