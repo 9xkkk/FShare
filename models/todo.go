@@ -95,25 +95,19 @@ type Hashdata struct {
 }
 
 var IP = gin.H{
-	"A": "124.223.171.19", //王钺程
-	"B": "101.43.94.172",  //李炳翰
-	"C": "124.221.254.11", //金严
-	"D": "124.223.210.53", //叶克炉
-	"E": "124.222.196.78", //唐聪
-	"F": "10.96.228.235",  //kxq
-	"G": "10.96.208.18",   //wyc
-	"Y": "10.0.4.14",      //云服务器
+	"A": "124.223.171.19",
+	"B": "101.43.94.172",
+	"C": "124.221.254.11",
+	"D": "124.223.210.53",
+	"E": "124.222.196.78",
 }
 
 var Ip2Node = gin.H{
 	"124.223.171.19": "A",
 	"101.43.94.172":  "B",
 	"124.221.254.11": "C",
-	"124.223.210.53": "D", //叶克炉
-	"124.222.196.78": "E", //唐聪
-	"10.96.228.235":  "F", //kxq
-	"10.96.208.18":   "G", //wyc
-	"10.0.4.14":      "Y", //云服务器
+	"124.223.210.53": "D",
+	"124.222.196.78": "E",
 }
 
 var Node string //节点
@@ -343,8 +337,8 @@ func UpdateFile(file *File) (err error) {
 }
 
 func EmbedFingerprint(applyOwner, applyHash, epsilon, fileName string) (string, error) {
-	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/embed.py", fileName, applyHash, epsilon, applyOwner)
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash, epsilon, applyOwner)
+	cmd := exec.Command("./venv/bin/python", "python/embed.py", fileName, applyHash, epsilon, applyOwner)
 	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash, fingerprint, epsilon)
 
 	output, err := cmd.Output()
@@ -361,8 +355,8 @@ func EmbedFingerprint(applyOwner, applyHash, epsilon, fileName string) (string, 
 }
 
 func GenerateFingerprint(applyHash string) (string, error) {
-	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", fileName, applyHash)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/generate.py", applyHash)
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", applyHash)
+	cmd := exec.Command("./venv/bin/python", "python/generate.py", applyHash)
 	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash)
 
 	output, err := cmd.Output()
@@ -522,8 +516,8 @@ func GetVerifyFile(filetype string) (FilePath string, err error) {
 
 func ExtractFingerPrint(filePath, epsilon string) (string, string, string, error) {
 	fmt.Println(filePath)
-	//cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/extract.py", filePath)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/extract.py", filePath, epsilon)
+	//cmd := exec.Command("D:\\Reaserch\\System development\\project\\FShare\\venv\\Scripts\\python.exe", "python/extract.py", filePath, epsilon)
+	cmd := exec.Command("./venv/bin/python", "python/extract.py", filePath, epsilon)
 	//cmd := exec.Command("/usr/bin/python", "python/extract.py", filePath)
 
 	output, err := cmd.Output()
@@ -799,7 +793,7 @@ func DOUtility(context *gin.Context, fileName string) ([][]float64, [][]float64,
 
 	// 使用 exec.Command 执行 Python 脚本
 	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/Model_Train.py", dst_original, dst_perturbed)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
+	cmd := exec.Command("./venv/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
 	//cmd := exec.Command("/usr/bin/python", "python/Model_Train.py", dst_original, dst_perturbed)
 
 	// 创建缓冲区来捕获输出和错误
@@ -851,7 +845,7 @@ func DOUtility2(context *gin.Context) ([][]float64, [][]float64, [][]float64, []
 
 	// 使用 exec.Command 执行 Python 脚本
 	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/Model_Train2.py", dst)
-	cmd := exec.Command("/root/Y/venv/bin/python", "python/Model_Train2.py", dst)
+	cmd := exec.Command("./venv/bin/python", "python/Model_Train2.py", dst)
 	//cmd := exec.Command("/usr/bin/python", "python/Model_Train2.py", dst)
 
 	// 创建缓冲区来捕获输出和错误

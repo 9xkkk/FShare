@@ -10,7 +10,7 @@ func SetupRouter() *gin.Engine {
 
 	r := gin.Default()
 	r.Use(middlewares.Cors())
-	r.Static("/dist", "./dist")
+	//r.Static("/dist", "./dist")
 	//r.Static("/static", "static")
 	//r.LoadHTMLGlob("templates/*")
 	r.GET("/myfile", controller.IndexHandler)
@@ -34,7 +34,7 @@ func SetupRouter() *gin.Engine {
 		//更改申请状态
 		v1Group.PUT("/update/:id/:applyOwner/:file_owner/:status", controller.UpdateApplyStatus)
 		//选择隐私预算
-		v1Group.PUT("/privacy/:id/:applyOwner/:file_owner/:epsilon", controller.UpdataPrivacyBudget)
+		v1Group.PUT("/privacy/:id/:applyOwner/:file_owner/:epsilon", controller.UpdatePrivacyBudget)
 		//删除
 		v1Group.DELETE("/deleteapply/:id/:applyOwner/:file_owner", controller.DeleteApply)
 		v1Group.DELETE("/deletefile/:id/:file_owner", controller.DeleteAFile)

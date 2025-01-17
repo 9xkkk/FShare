@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"FShare/dao"
 	"FShare/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -206,15 +207,26 @@ func UpdateApplyStatus(context *gin.Context) {
 	applyrecord := new(models.Applyrecord)
 	//_ = context.BindJSON(&applyrecord)
 	//新信息保存到数据库
-	err = models.UpdateApply(apply, applyrecord)
-	if err != nil {
-		context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+	if apply.Status == 3 {
+		apply.IsHandled = true
+		err = dao.DB.Save(apply).Error
+		if err != nil {
+			context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			context.JSON(http.StatusOK, apply)
+		}
 	} else {
-		context.JSON(http.StatusOK, apply)
+		err = models.UpdateApply(apply, applyrecord)
+		if err != nil {
+			context.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			context.JSON(http.StatusOK, apply)
+		}
 	}
+
 }
 
-func UpdataPrivacyBudget(context *gin.Context) {
+func UpdatePrivacyBudget(context *gin.Context) {
 	//拿到请求里的id
 	id, ok := context.Params.Get("id")
 	if !ok {
