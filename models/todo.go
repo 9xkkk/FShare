@@ -236,25 +236,21 @@ func UploadFiles(context *gin.Context) (err error) {
 	file.Status, _ = strconv.Atoi(context.PostForm("status"))
 
 	f, err := context.FormFile("f1")
+	f.Filename = file.Name //+".xml" todo:这里更改文件名可以加xml后缀
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 	} else {
-		t := time.Now()
-		file.Time = t.Format("2006-01-02 15:04:05")
-		file.Name = ModifyFileName(file.Name, file.Time) //为文件名加上时间标识，保证同名文件不会被覆盖
-		f.Filename = file.Name                           //+".xml" todo:这里更改文件名可以加xml后缀
 		//保存读取的文件到本地服务器
 		dst := path.Join("./csvfile", f.Filename) //todo:这里修改文件路径
-		err = context.SaveUploadedFile(f, dst)
-		if err != nil {
-			return err
-		}
+		_ = context.SaveUploadedFile(f, dst)
 		context.JSON(http.StatusOK, gin.H{
 			"status": "ok",
 		})
 		//生成文件ID
+		t := time.Now()
+		file.Time = t.Format("2006-01-02 15:04:05")
 		timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
 		randnum := fmt.Sprintf("%04v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(10000))
 		file.FileID = Node + timestamp + randnum
@@ -270,33 +266,78 @@ func UploadFiles(context *gin.Context) (err error) {
 	return
 }
 
-// ModifyFileName 函数用于修改文件名
-func ModifyFileName(fileName, fileTime string) string {
-	// 从 '.' 开始分割文件名
-	parts := strings.Split(fileName, ".")
-	if len(parts) != 2 {
-		// 如果文件名格式不正确，直接返回原文件名
-		return fileName
-	}
-
-	// 从空格开始分割时间
-	timeParts := strings.Split(fileTime, " ")
-	if len(timeParts) != 2 {
-		// 如果时间格式不正确，直接返回原文件名
-		return fileName
-	}
-
-	// 去掉时间部分的冒号
-	timeParts[1] = strings.ReplaceAll(timeParts[1], ":", "")
-	timeParts[0] = strings.ReplaceAll(timeParts[0], "-", "")
-
-	// 用 '-' 连接日期和时间
-	processedTime := strings.Join(timeParts, "")
-
-	// 拼接新的文件名
-	newFileName := fmt.Sprintf("%s_%s.%s", parts[0], processedTime, parts[1])
-	return newFileName
-}
+//func UploadFiles(context *gin.Context) (err error) {
+//	var file File
+//
+//	//file.FileOwner = context.PostForm("fileOwner") //todo：后面改成Node，这里测试不同节点用
+//	file.FileOwner = Node
+//	file.Name = context.PostForm("name")
+//	file.Description = context.PostForm("description")
+//	file.Size = context.PostForm("size")
+//	file.Status, _ = strconv.Atoi(context.PostForm("status"))
+//
+//	f, err := context.FormFile("f1")
+//	if err != nil {
+//		context.JSON(http.StatusBadRequest, gin.H{
+//			"error": err.Error(),
+//		})
+//	} else {
+//		t := time.Now()
+//		file.Time = t.Format("2006-01-02 15:04:05")
+//		file.Name = ModifyFileName(file.Name, file.Time) //为文件名加上时间标识，保证同名文件不会被覆盖
+//		f.Filename = file.Name                           //+".xml" todo:这里更改文件名可以加xml后缀
+//		//保存读取的文件到本地服务器
+//		dst := path.Join("./csvfile", f.Filename) //todo:这里修改文件路径
+//		err = context.SaveUploadedFile(f, dst)
+//		if err != nil {
+//			return err
+//		}
+//		context.JSON(http.StatusOK, gin.H{
+//			"status": "ok",
+//		})
+//		//生成文件ID
+//		timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
+//		randnum := fmt.Sprintf("%04v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(10000))
+//		file.FileID = Node + timestamp + randnum
+//		//file.Status = 1
+//		fileproperties := file.FileID + "#" + file.Name + "#" + file.FileOwner + "#" + file.Description + "#" + file.Size + "#" + file.Time + "#" + strconv.Itoa(file.Status)
+//		fmt.Println(fileproperties)
+//		file.Hash = transfer("file", fileproperties)
+//		//file.Fingerprint = GenertaeFingerPrint(file)
+//		if err = dao.DB.Create(&file).Error; err != nil {
+//			return err
+//		}
+//	}
+//	return
+//}
+//
+//// ModifyFileName 函数用于修改文件名
+//func ModifyFileName(fileName, fileTime string) string {
+//	// 从 '.' 开始分割文件名
+//	parts := strings.Split(fileName, ".")
+//	if len(parts) != 2 {
+//		// 如果文件名格式不正确，直接返回原文件名
+//		return fileName
+//	}
+//
+//	// 从空格开始分割时间
+//	timeParts := strings.Split(fileTime, " ")
+//	if len(timeParts) != 2 {
+//		// 如果时间格式不正确，直接返回原文件名
+//		return fileName
+//	}
+//
+//	// 去掉时间部分的冒号
+//	timeParts[1] = strings.ReplaceAll(timeParts[1], ":", "")
+//	timeParts[0] = strings.ReplaceAll(timeParts[0], "-", "")
+//
+//	// 用 '-' 连接日期和时间
+//	processedTime := strings.Join(timeParts, "")
+//
+//	// 拼接新的文件名
+//	newFileName := fmt.Sprintf("%s_%s.%s", parts[0], processedTime, parts[1])
+//	return newFileName
+//}
 
 func CreateApply(file *File) (err error) {
 	var apply Apply
@@ -387,7 +428,7 @@ func EmbedFingerprint(applyOwner, applyHash, epsilon, fileName string) (string, 
 }
 
 func GenerateFingerprint(applyHash string) (string, error) {
-	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/generate.py", applyHash)
+	//cmd := exec.Command("venv\\Scripts\\python.exe", "python/embed.py", applyHash)
 	cmd := exec.Command("./venv/bin/python", "python/generate.py", applyHash)
 	//cmd := exec.Command("/usr/bin/python", "python/embed.py", fileName, applyHash)
 
