@@ -46,18 +46,20 @@ func DownloadFile(context *gin.Context) {
 	applyOwner := fmt.Sprintf("%v", models.Ip2Node[ip])
 	if err := models.DownloadFile(context, node, filename, applyOwner); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	} else {
-		context.JSON(http.StatusOK, gin.H{"file": "success download"})
 	}
+	//else {
+	//	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+	//}
 }
 
 func DownloadLocal(context *gin.Context) {
 	filename, _ := context.Params.Get("fileName")
 	if err := models.DownloadLocalFile(context, filename); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	} else {
-		context.JSON(http.StatusOK, gin.H{"file": "success download"})
 	}
+	//else {
+	//	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+	//}
 }
 
 func DownloadTransformedFile(context *gin.Context) {
@@ -66,9 +68,10 @@ func DownloadTransformedFile(context *gin.Context) {
 	applyOwner, _ := context.Params.Get("applyOwner")
 	if err := models.DownloadFile(context, node, filename, applyOwner); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	} else {
-		context.JSON(http.StatusOK, gin.H{"file": "success download"})
 	}
+	//else {
+	//	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+	//}
 }
 
 func Download(context *gin.Context) {
@@ -76,9 +79,10 @@ func Download(context *gin.Context) {
 	applyOnwer, _ := context.Params.Get("applyOwner")
 	if err := models.Download(context, filename, applyOnwer); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	} else {
-		context.JSON(http.StatusOK, gin.H{"file": "success download"})
 	}
+	//else {
+	//	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+	//}
 }
 
 func IndexHandlerv4(context *gin.Context) {
@@ -488,7 +492,7 @@ func DownloadModelFile(context *gin.Context) {
 		}
 	}
 
-	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+	//context.JSON(http.StatusOK, gin.H{"file": "success download"})
 }
 
 func DownloadModel(context *gin.Context) {
@@ -496,9 +500,10 @@ func DownloadModel(context *gin.Context) {
 	Type, _ := context.Params.Get("Type")
 	if err := models.DownloadModel(context, modelname, Type); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	} else {
-		context.JSON(http.StatusOK, gin.H{"file": "success download"})
 	}
+	//else {
+	//	context.JSON(http.StatusOK, gin.H{"file": "success download"})
+	//}
 }
 
 // 将申请到的文件进行添加

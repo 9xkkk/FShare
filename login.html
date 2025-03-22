@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ForBlock数据安全共享系统</title>
+    <style>
+        body {
+            font-family: '微软雅黑', sans-serif; /* 使用微软雅黑 */
+            background-image: url('img/1.jpg'); /* 添加背景图片 */
+            background-size: cover; /* 确保背景图片覆盖整个视图 */
+            background-position: center; /* 背景图片居中 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* 使内容居中 */
+            text-align: center;
+        }
+        .login-container {
+            background: rgba(0, 0, 0, 0.7); /* 降低透明度 */
+            padding: 40px; /* 增加内边距 */
+            border-radius: 10px; /* 更圆的边角 */
+            box-shadow: 0 4px 25px rgba(0,0,0,0.3); /* 更强的阴影效果 */
+            width: 500px; /* 增加宽度 */
+            position: relative; /* 让子元素相对定位 */
+            z-index: 1; /* 提升层级，确保在比特串之上 */
+        }
+        .background-title {
+            color: #fff; /* 白色 */
+            font-size: 40px; /* 增大字体 */
+            margin-bottom: 10px; /* 减小与介绍文本的间距 */
+            white-space: nowrap; /* 不换行 */
+            overflow: hidden; /* 隐藏超出部分 */
+            text-overflow: ellipsis; /* 使用省略号表示超出部分 */
+        }
+        .system-intro {
+            color: #fff; /* 白色 */
+            font-size: 16px; /* 简短介绍的字体大小 */
+            margin-bottom: 20px; /* 标题与输入框之间的间距 */
+        }
+        h2 {
+            margin: 20px 0; /* 增加标题与登录模块之间的间距 */
+            color: #fff; /* 标题颜色 */
+        }
+        input {
+            margin: 10px 0;
+            padding: 12px;
+            width: 300px; /* 固定宽度 */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 300px; /* 固定宽度 */
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .register {
+            margin-top: 15px;
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .register:hover {
+            text-decoration: underline;
+        }
+        /* 比特串效果 */
+        .bit {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.8);
+            writing-mode: vertical-rl; /* 竖直排列文本 */
+            transform: rotate(180deg); /* 旋转文本方向 */
+            animation: move 3s linear infinite; /* 改为3秒 */
+        }
+        @keyframes move {
+            0% { transform: translateY(0) rotate(180deg); }
+            100% { transform: translateY(-100vh) rotate(180deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="login-container">
+        <div class="background-title">ForBlock数据安全共享系统</div>
+        <div class="system-intro">基于云链聚合的隐私保护数据共享与溯源平台</div>
+        <h2>登录</h2>
+        <input type="text" id="username" placeholder="用户名" required>
+        <input type="password" id="password" placeholder="密码" required>
+        <button onclick="login()">登录</button>
+        <a href="#" class="register">注册</a>
+    </div>
+</div>
+
+<script>
+    function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        if (username === 'A' && password === '1234') {
+            window.location.href = 'http://124.223.171.19';
+        } else if (username === 'B' && password === '1234') {
+            window.location.href = 'http://101.43.94.172';
+        } else if (username === 'E' && password === '1234') {
+            window.location.href = 'http://124.222.196.78';
+        } else {
+            alert('用户名或密码错误');
+        }
+    }
+
+    // 生成随机的01字符串
+    function createRandomBitString() {
+        const length = Math.floor(Math.random() * 5) + 3; // 随机长度在3到7之间
+        let bitString = '';
+        for (let i = 0; i < length; i++) {
+            bitString += Math.random() < 0.5 ? '0' : '1'; // 随机生成0或1
+        }
+        return bitString;
+    }
+
+    // 比特串生成
+    function createBit() {
+        const bit = document.createElement('div');
+        bit.className = 'bit';
+        bit.textContent = createRandomBitString(); // 使用随机的01字符串
+        bit.style.left = Math.random() * window.innerWidth + 'px';
+        bit.style.top = window.innerHeight + 'px';
+        bit.style.fontSize = Math.random() * 10 + 10 + 'px'; // 随机字体大小在10到20px之间
+        document.body.appendChild(bit);
+
+        setTimeout(() => {
+            bit.remove();
+        }, 3000); // 每个比特串持续3秒
+    }
+
+    setInterval(createBit, 150); // 每150毫秒生成一个比特串
+</script>
+</body>
+</html>
